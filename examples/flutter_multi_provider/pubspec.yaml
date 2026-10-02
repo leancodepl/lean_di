@@ -1,0 +1,26 @@
+name: flutter_multi_provider
+publish_to: none
+version: 1.0.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.0.0
+  flutter_lean_di:
+    path: ../../packages/flutter_lean_di
+  flutter_lean_di_bloc:
+    path: ../../packages/flutter_lean_di_bloc
+  marionette_flutter: ^0.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  leancode_lint: ^19.0.1
+
+flutter:
+  uses-material-design: true

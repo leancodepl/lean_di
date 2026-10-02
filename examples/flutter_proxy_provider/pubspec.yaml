@@ -1,0 +1,24 @@
+name: flutter_proxy_provider
+publish_to: none
+version: 1.0.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  equatable: ^2.0.5
+  flutter:
+    sdk: flutter
+  flutter_lean_di:
+    path: ../../packages/flutter_lean_di
+  marionette_flutter: ^0.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  leancode_lint: ^19.0.1
+
+flutter:
+  uses-material-design: true

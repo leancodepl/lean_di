@@ -1,0 +1,22 @@
+name: flutter_lean_di_bloc
+description: "Bloc and Cubit integration for Lean DI, with state observable through context.watch and context.select."
+version: 0.1.0
+repository: https://github.com/leancodepl/lean_di/tree/main/packages/flutter_lean_di_bloc
+homepage: https://github.com/leancodepl/lean_di/tree/main/packages/flutter_lean_di_bloc
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  bloc: ^9.2.0
+  flutter:
+    sdk: flutter
+  flutter_lean_di: ^0.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  leancode_lint: ^19.0.1
