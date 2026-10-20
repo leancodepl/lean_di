@@ -1,0 +1,42 @@
+name: flutter_lean_di_bloc publish
+
+on:
+  push:
+    tags: ['flutter_lean_di_bloc-v*']
+
+jobs:
+  publish:
+    name: Publish to pub.dev
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    defaults:
+      run:
+        working-directory: packages/flutter_lean_di_bloc
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Only setup-dart creates the OIDC token pub.dev authenticates with -
+      # flutter-action doesn't, so both are needed.
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      # The pub workspace contains Flutter packages, so even a pure Dart
+      # package needs the Flutter SDK to resolve dependencies.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+
+      - name: Publish and release
+        uses: leancodepl/mobile-tools/.github/actions/pub-release@pub-release-v1
+        with:
+          path: packages/flutter_lean_di_bloc
