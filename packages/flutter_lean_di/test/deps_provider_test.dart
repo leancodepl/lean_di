@@ -687,6 +687,198 @@ void main() {
     await tester.pump();
     expect(scope.isDisposed, isTrue);
   });
+
+  group('a single widget observing the same dependency in several ways', () {
+    testWidgets('select then watch rebuilds on any change', (tester) async {
+      final deps = Deps()
+        ..add(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 100)));
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DepsProvider.deps(
+            deps,
+            child: Builder(builder: (context) {
+              builds++;
+              final a = context.select<Pair, int>((p) => p.a);
+              final b = context.watch<Pair>().b;
+              return Text('$a:$b');
+            }),
+          ),
+        ),
+      );
+      expect(builds, equals(1));
+
+      // Doesn't change the selected value, but the full watch() should
+      // still rebuild.
+      deps.get<Pair>().setB(200);
+      await tester.pumpAndSettle();
+      expect(builds, equals(2));
+      expect(find.text('0:200'), findsOneWidget);
+
+      deps.get<Pair>().setA(1);
+      await tester.pumpAndSettle();
+      expect(builds, equals(3));
+      expect(find.text('1:200'), findsOneWidget);
+
+      await deps.dispose();
+    });
+
+    testWidgets('watch then select rebuilds on any change', (tester) async {
+      final deps = Deps()
+        ..add(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 100)));
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DepsProvider.deps(
+            deps,
+            child: Builder(builder: (context) {
+              builds++;
+              final b = context.watch<Pair>().b;
+              final a = context.select<Pair, int>((p) => p.a);
+              return Text('$a:$b');
+            }),
+          ),
+        ),
+      );
+
+      deps.get<Pair>().setB(200);
+      await tester.pumpAndSettle();
+      expect(builds, equals(2));
+      expect(find.text('0:200'), findsOneWidget);
+
+      await deps.dispose();
+    });
+
+    testWidgets('two selectors rebuild when either selected value changes',
+        (tester) async {
+      final deps = Deps()
+        ..add(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 100)));
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DepsProvider.deps(
+            deps,
+            child: Builder(builder: (context) {
+              builds++;
+              final a = context.select<Pair, int>((p) => p.a);
+              final b = context.select<Pair, int>((p) => p.b);
+              return Text('$a:$b');
+            }),
+          ),
+        ),
+      );
+
+      deps.get<Pair>().setB(200);
+      await tester.pumpAndSettle();
+      expect(builds, equals(2));
+      expect(find.text('0:200'), findsOneWidget);
+
+      deps.get<Pair>().setA(1);
+      await tester.pumpAndSettle();
+      expect(builds, equals(3));
+      expect(find.text('1:200'), findsOneWidget);
+
+      // Neither selected value changes.
+      deps.get<Pair>().setA(1);
+      await tester.pumpAndSettle();
+      expect(builds, equals(3));
+
+      await deps.dispose();
+    });
+
+    testWidgets('watchInstance then watch rebuilds on internal state changes',
+        (tester) async {
+      final deps = Deps()
+        ..add(ChangeNotifierDependency<Counter>((_, __) => Counter(0)));
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DepsProvider.deps(
+            deps,
+            child: Builder(builder: (context) {
+              builds++;
+              context.watchInstance<Counter>();
+              return Text('${context.watch<Counter>().value}');
+            }),
+          ),
+        ),
+      );
+
+      deps.get<Counter>().increment();
+      await tester.pumpAndSettle();
+      expect(builds, equals(2));
+      expect(find.text('1'), findsOneWidget);
+
+      await deps.dispose();
+    });
+
+    testWidgets('select then watchInstance rebuilds on a new instance',
+        (tester) async {
+      final deps = Deps()
+        ..add(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 100)));
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DepsProvider.deps(
+            deps,
+            child: Builder(builder: (context) {
+              builds++;
+              final a = context.select<Pair, int>((p) => p.a);
+              final b = context.watchInstance<Pair>().b;
+              return Text('$a:$b');
+            }),
+          ),
+        ),
+      );
+
+      // Same `a`, different instance.
+      deps.replace(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 200)));
+      await tester.pumpAndSettle();
+      expect(find.text('0:200'), findsOneWidget);
+      expect(builds, greaterThanOrEqualTo(2));
+
+      await deps.dispose();
+    });
+  });
+
+  testWidgets('a selector uses the closure from the most recent build',
+      (tester) async {
+    final deps = Deps()
+      ..add(ChangeNotifierDependency<Pair>((_, __) => Pair(0, 100)));
+    var selectB = false;
+    late StateSetter setOuter;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DepsProvider.deps(
+          deps,
+          child: StatefulBuilder(builder: (context, setState) {
+            setOuter = setState;
+            // Captures this build's value, not the variable.
+            final useB = selectB;
+            final value = context.select<Pair, int>((p) => useB ? p.b : p.a);
+            return Text('$value');
+          }),
+        ),
+      ),
+    );
+    expect(find.text('0'), findsOneWidget);
+
+    setOuter(() => selectB = true);
+    await tester.pumpAndSettle();
+    expect(find.text('100'), findsOneWidget);
+
+    deps.get<Pair>().setB(200);
+    await tester.pumpAndSettle();
+    expect(find.text('200'), findsOneWidget);
+
+    await deps.dispose();
+  });
 }
 
 class CounterA extends ChangeNotifier {
