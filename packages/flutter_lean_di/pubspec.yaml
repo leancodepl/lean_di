@@ -1,6 +1,6 @@
 name: flutter_lean_di
 description: "Service-locator-based dependency injection for Flutter, with modules, reactivity, and scopes bound to the widget tree but accesible outside it."
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/leancodepl/lean_di/tree/main/packages/flutter_lean_di
 homepage: https://github.com/leancodepl/lean_di/tree/main/packages/flutter_lean_di
 

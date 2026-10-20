@@ -1,6 +1,6 @@
 name: lean_di
 description: "A service-locator-based dependency injection solution for Dart, with scopes, modules, computed dependencies, and reactivity support."
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/leancodepl/lean_di/tree/main/packages/lean_di
 homepage: https://github.com/leancodepl/lean_di/tree/main/packages/lean_di
 
