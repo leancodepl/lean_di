@@ -2,6 +2,8 @@ import 'package:meta/meta.dart';
 
 import 'dependency.dart';
 import 'dependency_observer.dart';
+import 'module.dart';
+import 'registerable.dart';
 
 /// Registers the exact same instance created by a [TTarget] dependency
 /// under an additional key [TAlias] - typically a superclass or an
@@ -41,7 +43,7 @@ import 'dependency_observer.dart';
 /// added and removed together.
 @immutable
 class Alias<TAlias extends Object, TTarget extends TAlias>
-    implements Registerable {
+    extends SingleRegisterable {
   /// Registers [TTarget] as an alias reachable under [TAlias] too - see the
   /// class-level docs above.
   const Alias({this.createObserver, this.tags, this.debugLabel});
@@ -59,16 +61,14 @@ class Alias<TAlias extends Object, TTarget extends TAlias>
   final String? debugLabel;
 
   @override
-  Iterable<Dependency<Object>> get dependencies => [
-        Dependency<TAlias>(
-          // A tracked read is all that's needed here, for both the initial
-          // value and staying in sync afterward - see Dependency.create.
-          (deps, _) => deps.watchInstance<TTarget>(),
-          createObserver: createObserver,
-          tags: tags,
-          debugLabel: debugLabel ?? toString(),
-        ),
-      ];
+  Dependency<TAlias> get dependency => Dependency<TAlias>(
+        // A tracked read is all that's needed here, for both the initial
+        // value and staying in sync afterward - see Dependency.create.
+        (deps, _) => deps.watchInstance<TTarget>(),
+        createObserver: createObserver,
+        tags: tags,
+        debugLabel: debugLabel ?? toString(),
+      );
 
   @override
   String toString() => 'Alias<$TAlias, $TTarget>';

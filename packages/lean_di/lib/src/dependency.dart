@@ -6,12 +6,14 @@ import 'dependency_observer.dart';
 import 'deps.dart';
 import 'deps_reader.dart';
 import 'managed_dependency.dart';
+import 'module.dart';
+import 'registerable.dart';
 import 'types.dart';
 
 /// An immutable object describing a dependency. It can be registered in [Deps]
 /// by using [Deps.add].
 @immutable
-class Dependency<T extends Object> implements Registerable {
+class Dependency<T extends Object> extends SingleRegisterable {
   /// An immutable object describing a dependency. It can be registered in [Deps]
   /// by using [Deps.add].
   const Dependency(
@@ -127,7 +129,7 @@ class Dependency<T extends Object> implements Registerable {
   }
 
   @override
-  Iterable<Dependency<Object>> get dependencies => [this];
+  Dependency<T> get dependency => this;
 }
 
 /// A snapshot of a single registered dependency's descriptor and current
@@ -180,39 +182,4 @@ class DependencyDiagnostics {
     final grouping = isStandalone ? 'standalone' : 'part of $origin';
     return 'DependencyDiagnostics($dependency, $resolution, $grouping)';
   }
-}
-
-/// Groups several [Dependency] descriptors so they can be registered and
-/// removed together as one unit - see [Deps.add]/[Deps.addAll] and
-/// [Deps.remove], which also accepts a [Module] to remove every dependency
-/// it lists. [DependencyDiagnostics.module] reports which [Module] (if any)
-/// a given registered dependency came from.
-class Module implements Registerable {
-  /// Groups [dependencies] so they can be registered and removed together -
-  /// see the class-level docs above.
-  Module(
-    this.dependencies, {
-    this.debugLabel,
-  });
-
-  @override
-  final List<Dependency<Object>> dependencies;
-
-  /// A debug label to help identify this module in logs and diagnostics.
-  final String? debugLabel;
-
-  @override
-  String toString() => "Module('$debugLabel')";
-}
-
-/// Something that can be passed to [Deps.add]/[Deps.addAll] (and removed via
-/// [Deps.remove]) - implemented by [Dependency] and [Module].
-///
-/// To create one, use [Dependency.new], [Dependency.value], or
-/// [Module.new].
-abstract class Registerable {
-  /// The individual [Dependency] descriptors this groups - just a
-  /// single-element list containing itself for a standalone [Dependency],
-  /// or every dependency listed in a [Module].
-  Iterable<Dependency<Object>> get dependencies;
 }

@@ -176,6 +176,21 @@ void main() {
     expect(deps.isRegistered<ServiceInterface>(), isFalse);
   });
 
+  test('an alias inside a Module is registered and removed with it', () {
+    final module = Module([
+      Dependency((_, __) => ServiceImpl()),
+      const Alias<ServiceInterface, ServiceImpl>(),
+    ]);
+    deps.add(module);
+
+    expect(deps.get<ServiceInterface>(), same(deps.get<ServiceImpl>()));
+
+    deps.remove(module);
+
+    expect(deps.isRegistered<ServiceImpl>(), isFalse);
+    expect(deps.isRegistered<ServiceInterface>(), isFalse);
+  });
+
   test(
       'debugOwnDependencies lists the alias under its own key, resolving '
       'to the same value', () {
