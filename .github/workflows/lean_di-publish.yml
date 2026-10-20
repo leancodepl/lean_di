@@ -1,0 +1,42 @@
+name: lean_di publish
+
+on:
+  push:
+    tags: ['lean_di-v*']
+
+jobs:
+  publish:
+    name: Publish to pub.dev
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    defaults:
+      run:
+        working-directory: packages/lean_di
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Only setup-dart creates the OIDC token pub.dev authenticates with -
+      # flutter-action doesn't, so both are needed.
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+
+      # The pub workspace contains Flutter packages, so even a pure Dart
+      # package needs the Flutter SDK to resolve dependencies.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+
+      - name: Publish and release
+        uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
+        with:
+          path: packages/lean_di
