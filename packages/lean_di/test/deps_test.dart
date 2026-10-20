@@ -730,6 +730,45 @@ void main() {
     expect(scopeDeps.isRegistered<Foo>(), isFalse);
   });
 
+  group('type arguments are inferred from create when omitted', () {
+    void expectRegisteredUnderOwnTypes(Deps deps) {
+      expect(deps.isRegistered<Bar>(), isTrue);
+      expect(deps.isRegistered<Foo>(), isTrue);
+      expect(deps.isRegistered<Object>(), isFalse);
+    }
+
+    test('in add()', () {
+      deps
+        ..add(Dependency((_, __) => Bar()))
+        ..add(Dependency((deps, _) => Foo(bar: deps.get())));
+
+      expectRegisteredUnderOwnTypes(deps);
+    });
+
+    test('in addAll()', () {
+      deps.addAll([
+        Dependency((_, __) => Bar()),
+        Dependency((deps, _) => Foo(bar: deps.get())),
+      ]);
+
+      expectRegisteredUnderOwnTypes(deps);
+    });
+
+    test('in a Module', () {
+      final module = Module([
+        Dependency((_, __) => Bar()),
+        Dependency.value(Foo(bar: Bar())),
+      ]);
+      deps.add(module);
+
+      expect(
+        module.dependencies.map((dependency) => dependency.key),
+        equals([Bar, Foo]),
+      );
+      expectRegisteredUnderOwnTypes(deps);
+    });
+  });
+
   test(
       'remove() accepts a Registerable describing the same dependency '
       'types, without needing the exact original instance', () {

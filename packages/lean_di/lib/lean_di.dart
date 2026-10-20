@@ -5,4 +5,6 @@ export 'src/deps.dart';
 export 'src/deps_events.dart';
 export 'src/deps_reader.dart';
 export 'src/errors.dart';
+export 'src/module.dart';
+export 'src/registerable.dart';
 export 'src/types.dart';

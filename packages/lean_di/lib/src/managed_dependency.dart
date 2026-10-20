@@ -10,6 +10,7 @@ import 'deps_events.dart';
 import 'deps_reader.dart';
 import 'errors.dart';
 import 'event_notifier.dart';
+import 'registerable.dart';
 import 'types.dart';
 
 /// This class helps manage lifecycle of a single dependency. It is tightly

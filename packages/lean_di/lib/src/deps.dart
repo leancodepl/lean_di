@@ -8,6 +8,8 @@ import 'dependency.dart';
 import 'deps_events.dart';
 import 'errors.dart';
 import 'managed_dependency.dart';
+import 'module.dart';
+import 'registerable.dart';
 import 'types.dart';
 
 /// Enables tracking of a [Deps] scope's child scopes (created via
