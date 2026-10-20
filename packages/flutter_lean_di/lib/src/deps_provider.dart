@@ -455,24 +455,20 @@ class _DepsElement extends InheritedElement {
     }
     final (type, options) = value;
 
-    final watchers = _watchersByType.putIfAbsent(type, () => {});
-    if (watchers.containsKey(dependent)) {
-      // Already set up - matches the old map's `??=`, which likewise only
-      // ever honored the first (dependent, type) registration.
-      return;
-    }
-    final selector = options.selector;
-    watchers[dependent] = _Watcher(
-      observeState: options.observeState,
-      selector: selector,
-      // What the dependent's select()/maybeSelect() is about to return - it
-      // reads the same instance right after this - so the next change is
-      // compared against what it actually shows, whether or not the shared
-      // subscription below already existed.
-      lastSelected: selector == null
-          ? null
-          : _applySelector(selector, widget.deps.tryGet<Object>(type)),
-    );
+    // Called on every watch()/select() call - a dependent observing the
+    // same type in several ways (e.g. both select() and watch()) merges
+    // them all into its one _Watcher for that type.
+    _watchersByType
+        .putIfAbsent(type, () => {})
+        .putIfAbsent(dependent, _Watcher.new)
+        .addAspect(
+          options,
+          // What the dependent's select()/maybeSelect() is about to return -
+          // it reads the same instance right after this - so the next change
+          // is compared against what it actually shows, whether or not the
+          // shared subscription below already existed.
+          () => widget.deps.tryGet<Object>(type),
+        );
 
     final subscriptionKey = (type, options.observeState);
     _subscriptions.putIfAbsent(subscriptionKey, () {
@@ -490,11 +486,6 @@ class _DepsElement extends InheritedElement {
     });
   }
 
-  static Object? _applySelector(Function selector, Object? value) =>
-      // reason: selector is stored as a bare Function to keep _Watcher
-      // non-generic.
-      value == null ? null : (selector as dynamic)(value);
-
   /// Called for every change of a subscribed dependency - never for the
   /// value its dependents were built with, see [setDependencies].
   void _dispatch((Type, bool) subscriptionKey, Object value) {
@@ -504,17 +495,9 @@ class _DepsElement extends InheritedElement {
       return;
     }
     for (final MapEntry(key: dependent, value: watcher) in watchers.entries) {
-      if (watcher.observeState != observeState) {
-        continue;
+      if (watcher.shouldRebuild(observeState: observeState, value: value)) {
+        dependent.markNeedsBuild();
       }
-      if (watcher.selector case final selector?) {
-        final selected = _applySelector(selector, value);
-        if (selected == watcher.lastSelected) {
-          continue;
-        }
-        watcher.lastSelected = selected;
-      }
-      dependent.markNeedsBuild();
     }
   }
 
@@ -537,10 +520,10 @@ class _DepsElement extends InheritedElement {
       _subscriptions.remove((type, false))?.cancel();
       return;
     }
-    if (!watchers.values.any((w) => w.observeState)) {
+    if (!watchers.values.any((w) => w.observesState)) {
       _subscriptions.remove((type, true))?.cancel();
     }
-    if (!watchers.values.any((w) => !w.observeState)) {
+    if (!watchers.values.any((w) => w.watchesInstance)) {
       _subscriptions.remove((type, false))?.cancel();
     }
   }
@@ -556,14 +539,86 @@ class _DepsElement extends InheritedElement {
   }
 }
 
+/// Everything one dependent observes about one type, merged across all of
+/// its watch()/watchInstance()/select() calls for that type.
+///
+/// Reset on the dependent's next build (see [addAspect]) so it reflects only
+/// what that build asked for - with the selector closures it actually used -
+/// instead of piling up every closure ever passed to select().
 class _Watcher {
-  _Watcher({required this.observeState, this.selector, this.lastSelected});
+  bool watchesState = false;
+  bool watchesInstance = false;
+  final List<_SelectorWatch> selectors = [];
 
-  final bool observeState;
-  final Function? selector;
+  bool _clearOnNextAspect = false;
+  bool _clearScheduled = false;
+
+  /// Whether this needs the (type, observeState: true) subscription.
+  bool get observesState => watchesState || selectors.isNotEmpty;
+
+  void addAspect(_ObserveOptions options, Object? Function() currentValue) {
+    if (_clearOnNextAspect) {
+      _clearOnNextAspect = false;
+      watchesState = false;
+      watchesInstance = false;
+      selectors.clear();
+    }
+    // Every aspect of one build is registered synchronously, so the first
+    // aspect after a microtask boundary belongs to a new build.
+    if (!_clearScheduled) {
+      _clearScheduled = true;
+      scheduleMicrotask(() {
+        _clearScheduled = false;
+        _clearOnNextAspect = true;
+      });
+    }
+
+    switch (options) {
+      case _ObserveOptions(:final selector?):
+        selectors.add(_SelectorWatch(
+          selector,
+          _SelectorWatch.apply(selector, currentValue()),
+        ));
+      case _ObserveOptions(observeState: true):
+        watchesState = true;
+      case _ObserveOptions(observeState: false):
+        watchesInstance = true;
+    }
+  }
+
+  /// Whether a [value] emitted by the (type, [observeState]) subscription
+  /// should rebuild the dependent.
+  bool shouldRebuild({required bool observeState, required Object value}) {
+    if (!observeState) {
+      return watchesInstance;
+    }
+    if (watchesState) {
+      return true;
+    }
+    var changed = false;
+    for (final watch in selectors) {
+      final selected = _SelectorWatch.apply(watch.selector, value);
+      if (selected != watch.lastSelected) {
+        watch.lastSelected = selected;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+}
+
+class _SelectorWatch {
+  _SelectorWatch(this.selector, this.lastSelected);
+
+  final Function selector;
 
   /// The last value [selector] returned that the dependent was built with.
   Object? lastSelected;
+
+  static Object? apply(Function selector, Object? value) =>
+      // reason: selector is stored as a bare Function to keep _Watcher
+      // non-generic.
+      value == null ? null : (selector as dynamic)(value);
 }
 
 @immutable
